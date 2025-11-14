@@ -25,6 +25,10 @@ def test_initial_state(client):
     assert data['team1_score'] == 501
     assert data['team2_score'] == 501
     assert data['current_player'] == 1
+    assert data['turn_scores'] == []
+    assert data['turn_log'] == []
+    assert data['player1_name'] == "Player 1"
+    assert data['player2_name'] == "Player 2"
     assert not data['game_over']
 
 def test_reset_game(client):

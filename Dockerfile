@@ -11,12 +11,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application's code into the container at /app
-COPY templates/ /app/templates
-COPY app.py .
+COPY . .
 
-# Make port 5054 available to the world outside this container
+# Expose the port the app runs on
 EXPOSE 5054
 
-# Run the app using Gunicorn for a production-ready server
-# This command tells Gunicorn to run the 'app' object from the 'app.py' file.
-CMD ["gunicorn", "--bind", "0.0.0.0:5054", "app:app"]
+# Run app.py when the container launches using Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5054", "--workers", "4", "app:app"]

@@ -5,8 +5,13 @@ from flask import Flask, render_template_string, jsonify, request, session
 # Initialize the Flask app
 app = Flask(__name__)
 # A secret key is required for Flask to use 'session'
-# We use os.urandom for a secure, random key each time the app starts
-app.secret_key = os.urandom(24)
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    print("WARNING: SECRET_KEY environment variable not set. Using a temporary key. This is not suitable for production with multiple workers.")
+    SECRET_KEY = os.urandom(24).hex()
+
+app.secret_key = SECRET_KEY
+
 
 # --- App Logic ---
 
