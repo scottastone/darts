@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   darts-scorer:
     build: .
@@ -8,4 +7,4 @@ services:
       - .:/app
     environment:
       # Use a fixed secret key for all workers in the container
-      - SECRET_KEY=a-very-secure-and-static-secret-key-for-darts
+      - SECRET_KEY=pick-a-key-here-or-use-this-one

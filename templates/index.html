@@ -100,6 +100,7 @@
         <header class="flex flex-wrap justify-between items-center gap-y-4 mb-6">
             <h1 class="text-3xl font-bold">Darts in the Dungeon 🎯</h1>
             <div class="flex items-center space-x-4">
+                <!-- The user's file has a dropdown, not buttons. I will add cricket to the dropdown. -->
                 <div class="relative">
                     <select id="gameModeSelect" class="h-12 px-4 rounded-lg font-semibold bg-black text-white border border-white/10 shadow-lg outline-none focus:ring-2 focus:ring-sky-400 appearance-none">
                         <option value="around_the_world">Around the World</option>
@@ -108,14 +109,17 @@
                         <option value="301">301</option>
                         <option value="201">201</option>
                         <option value="101">101</option>
+                        <option value="cricket">Cricket</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                         <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                     </div>
                 </div>
-                <button id="teamsModeBtn" class="w-32 h-12 ctrl-btn">Teams: OFF</button>
-                <button id="statsBtn" class="w-28 h-12 ctrl-btn">Stats</button>
-                <button id="newGameBtn" class="w-32 h-12 flex items-center justify-center rounded-lg font-bold text-lg text-white
+                <button id="statsBtn" class="h-12 px-4 flex items-center justify-center rounded-lg font-bold text-white
+                                             bg-indigo-500/50 border border-indigo-400/60 shadow-md
+                                             transition-all duration-150 hover:bg-indigo-500/60 hover:shadow-lg hover:shadow-indigo-400/30
+                                             active:scale-95 active:bg-indigo-500/70">Stats</button>
+                <button id="newGameBtn" class="h-12 px-6 flex items-center justify-center rounded-lg font-bold text-lg text-white
                                              bg-green-500/50 border border-green-400/60 shadow-md
                                              transition-all duration-150 hover:bg-green-500/60 hover:shadow-lg hover:shadow-green-400/30
                                              active:scale-95 active:bg-green-500/70">
@@ -124,20 +128,67 @@
             </div>
         </header>
 
+        <!-- Player Management Panel -->
+        <div class="glass-panel p-4 mb-4">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-semibold">Players</h3>
+                <button id="teamsModeBtn" class="w-32 h-10 ctrl-btn text-sm">Teams: OFF</button>
+            </div>
+            <div id="player_names_container" class="grid grid-cols-2 gap-x-4">
+                <!-- Team 1 -->
+                <div id="team1_names_panel">
+                    <h4 class="text-sm font-bold text-sky-400 mb-1">Team 1</h4>
+                    <div class="space-y-2">
+                        <input id="p1_name_input" type="text" value="Player 1" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-sky-400">
+                        <input id="p3_name_input" type="text" value="Player 3" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-sky-400">
+                    </div>
+                </div>
+                <!-- Team 2 -->
+                <div id="team2_names_panel">
+                    <h4 class="text-sm font-bold text-amber-400 mb-1">Team 2</h4>
+                    <div class="space-y-2">
+                        <input id="p2_name_input" type="text" value="Player 2" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
+                        <input id="p4_name_input" type="text" value="Player 4" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Scoreboard -->
-        <div class="flex space-x-4 mb-4">
-            <div id="team1_board" class="player-board inactive">
+        <div id="x01_scoreboard" class="flex space-x-4 mb-4">
+            <div id="team1_board" class="player-board inactive flex-1 text-left">
                 <h2 class="text-lg font-bold mb-2">Team 1</h2>
-                <input id="p1_name_input" type="text" value="Player 1" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
-                <input id="p3_name_input" type="text" value="Player 3" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
                 <div id="team1_score" class="text-7xl font-bold mt-2">501</div>
             </div>
-            <div id="team2_board" class="player-board inactive">
+            <div id="team2_board" class="player-board inactive flex-1 text-right">
                 <h2 class="text-lg font-bold mb-2">Team 2</h2>
-                <input id="p2_name_input" type="text" value="Player 2" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
-                <input id="p4_name_input" type="text" value="Player 4" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
                 <div id="team2_score" class="text-7xl font-bold mt-2">501</div>
             </div>
+        </div>
+
+        <!-- Cricket Scoreboard (hidden by default) -->
+        <div id="cricket_scoreboard" class="hidden w-full max-w-lg mx-auto mb-4 text-white">
+            <div class="grid grid-cols-3 items-center text-center bg-gray-800/50 rounded-t-lg p-2">
+                <div id="cricket_p1_name" class="text-lg font-bold text-sky-400">Player 1</div>
+                <div class="text-sm font-semibold">Score</div>
+                <div id="cricket_p2_name" class="text-lg font-bold text-amber-400">Player 2</div>
+            </div>
+            <div class="grid grid-cols-3 items-center text-center bg-gray-900/50 p-2 border-b border-white/10">
+                <div id="cricket_p1_score" class="text-2xl font-bold">0</div>
+                <div>&nbsp;</div>
+                <div id="cricket_p2_score" class="text-2xl font-bold">0</div>
+            </div>
+            <!-- Cricket Numbers -->
+            <div id="cricket_numbers" class="space-y-1 mt-1">
+                <!-- Rows will be injected by JS -->
+            </div>
+            <template id="cricket_row_template">
+                <div class="grid grid-cols-3 items-center text-center bg-gray-800/50 p-2 rounded-md h-12">
+                    <div class="p1-marks text-2xl font-mono text-sky-400"></div>
+                    <div class="number-label text-xl font-bold"></div>
+                    <div class="p2-marks text-2xl font-mono text-amber-400"></div>
+                </div>
+            </template>
         </div>
 
         <!-- Message Bar -->
@@ -168,7 +219,7 @@
         </div>
 
         <!-- Score Input Buttons -->
-        <div class="grid grid-cols-7 gap-2">
+        <div class="grid grid-cols-7 gap-1 sm:gap-2">
             <button class="score-btn" data-score="20">20</button>
             <button class="score-btn" data-score="19">19</button>
             <button class="score-btn" data-score="18">18</button>
@@ -195,7 +246,7 @@
         </div>
 
         <!-- Bull and Miss Buttons -->
-        <div class="grid grid-cols-7 gap-2 mt-2">
+        <div class="grid grid-cols-7 gap-1 sm:gap-2 mt-1">
             <button class="score-btn col-span-3" data-score="25">OUTER BULL (25)</button>
             <button class="score-btn col-span-4" data-score="0">MISS (0)</button>
             <button id="btn_bull" class="score-btn col-span-7">DBL BULL (50)</button>
@@ -248,6 +299,10 @@
             const checkoutSuggestions = document.getElementById('checkout_suggestions');
             const turnHistoryLog = document.getElementById('turn_history_log');
             
+            const x01Scoreboard = document.getElementById('x01_scoreboard');
+            const cricketScoreboard = document.getElementById('cricket_scoreboard');
+
+
             const btnDouble = document.getElementById('btn_double');
             const btnTriple = document.getElementById('btn_triple');
             const btnUndo = document.getElementById('btn_undo');
@@ -261,11 +316,58 @@
             const closeStatsBtn = document.getElementById('closeStatsBtn');
             const teamsModeBtn = document.getElementById('teamsModeBtn');
 
+            function renderCricketBoard(state) {
+                const cricketNumbers = ['20', '19', '18', '17', '16', '15', '25']; // 25 is Bull
+                const container = document.getElementById('cricket_numbers');
+                const template = document.getElementById('cricket_row_template');
+                container.innerHTML = ''; // Clear previous state
+
+                // Update player names and scores
+                document.getElementById('cricket_p1_name').textContent = state.player1_name;
+                document.getElementById('cricket_p2_name').textContent = state.player2_name;
+                document.getElementById('cricket_p1_score').textContent = state.team1_score;
+                document.getElementById('cricket_p2_score').textContent = state.team2_score;
+
+                const marksSymbols = {
+                    1: '/',
+                    2: 'X',
+                    3: '◎'
+                };
+
+                cricketNumbers.forEach(num => {
+                    const clone = template.content.cloneNode(true);
+                    const row = clone.querySelector('div');
+                    
+                    const p1Marks = state.cricket_marks.team1[num];
+                    const p2Marks = state.cricket_marks.team2[num];
+
+                    const p1MarksEl = row.querySelector('.p1-marks');
+                    const p2MarksEl = row.querySelector('.p2-marks');
+                    const numberLabelEl = row.querySelector('.number-label');
+
+                    numberLabelEl.textContent = (num === '25') ? 'Bull' : num;
+                    
+                    p1MarksEl.textContent = marksSymbols[p1Marks] || '';
+                    p2MarksEl.textContent = marksSymbols[p2Marks] || '';
+
+                    // Add styling for closed numbers
+                    if (p1Marks >= 3) {
+                        p1MarksEl.classList.add('text-green-400');
+                    }
+                    if (p2Marks >= 3) {
+                        p2MarksEl.classList.add('text-green-400');
+                    }
+                    if (p1Marks >= 3 && p2Marks >= 3) {
+                        numberLabelEl.classList.add('text-red-500', 'line-through');
+                    }
+
+                    container.appendChild(row);
+                });
+            }
+
             // Function to update the entire UI from a state object
             function updateUI(state) {
                 currentState = state; // Keep a global copy of the state
-                team1Score.textContent = state.team1_score;
-                team2Score.textContent = state.team2_score;
                 p1NameInput.value = state.player1_name;
                 p2NameInput.value = state.player2_name;
                 p3NameInput.value = state.player3_name;
@@ -275,23 +377,43 @@
                 teamsModeBtn.textContent = state.teams_mode ? 'Teams: ON' : 'Teams: OFF';
                 teamsModeBtn.classList.toggle('active', state.teams_mode);
 
-                // Show/hide player name inputs based on teams mode
-                p3NameInput.classList.toggle('hidden', !state.teams_mode);
-                p4NameInput.classList.toggle('hidden', !state.teams_mode);
+                // Adjust player name panel for teams mode
+                const playerNamesContainer = document.getElementById('player_names_container');
+                const team1NamesPanel = document.getElementById('team1_names_panel');
+                const team2NamesPanel = document.getElementById('team2_names_panel');
 
-                // Show/hide UI elements based on game mode
-                if (state.game_mode === 'around_the_world') {
+                if (state.teams_mode) {
+                    team1NamesPanel.querySelector('h4').textContent = 'Team 1';
+                    team2NamesPanel.querySelector('h4').textContent = 'Team 2';
+                } else {
+                    // In solo mode, just rename the headers
+                    team1NamesPanel.querySelector('h4').textContent = 'Player 1';
+                    team2NamesPanel.querySelector('h4').textContent = 'Player 2';
+                }
+                p3NameInput.classList.toggle('hidden', !state.teams_mode); // Hide P3 if teams off
+                p4NameInput.classList.toggle('hidden', !state.teams_mode); // Hide P4 if teams off
+
+                // Show/hide scoreboards and UI elements based on game mode
+                const isCricket = state.game_mode === 'cricket';
+                const isAroundTheWorld = state.game_mode === 'around_the_world';
+
+                x01Scoreboard.classList.toggle('hidden', isCricket);
+                cricketScoreboard.classList.toggle('hidden', !isCricket);
+
+                if (isCricket) {
+                    renderCricketBoard(state);
                     checkoutContainer.classList.add('hidden');
-                    // Update score display to show target number
+                } else if (isAroundTheWorld) {
+                    checkoutContainer.classList.add('hidden');
                     const t1Target = state.team1_target > 20 ? 'Bull' : state.team1_target;
                     const t2Target = state.team2_target > 20 ? 'Bull' : state.team2_target;
                     team1Score.textContent = t1Target;
                     team2Score.textContent = t2Target;
                     team1Score.classList.remove('text-7xl'); team1Score.classList.add('text-5xl');
                     team2Score.classList.remove('text-7xl'); team2Score.classList.add('text-5xl');
-                } else { // 501, 301, etc.
-                    team1Score.classList.add('text-7xl'); team1Score.classList.remove('text-5xl');
-                    team2Score.classList.add('text-7xl'); team2Score.classList.remove('text-5xl');
+                } else { // X01 games
+                    team1Score.textContent = state.team1_score;
+                    team2Score.textContent = state.team2_score;
                 }
 
                 // Clear all active states first
@@ -307,13 +429,31 @@
                 }
 
                 // Highlight active team board
-                if ([1, 3].includes(currentPlayerNum)) { // Team 1
+                if (isCricket || [1, 3].includes(currentPlayerNum)) { // Team 1
                     team1Board.classList.add('active');
                     team2Board.classList.add('inactive');
-                } else { // Team 2
+                } else { // Team 2 for X01
                     team2Board.classList.add('active');
                     team1Board.classList.add('inactive');
                 }
+
+                // Dynamically color team headers and scores
+                const isTeam1Active = [1, 3].includes(currentPlayerNum);
+                const team1Elements = [team1Board.querySelector('h2'), team1Score, document.getElementById('cricket_p1_name'), document.getElementById('cricket_p1_score'), team1NamesPanel.querySelector('h4')];
+                const team2Elements = [team2Board.querySelector('h2'), team2Score, document.getElementById('cricket_p2_name'), document.getElementById('cricket_p2_score'), team2NamesPanel.querySelector('h4')];
+
+                team1Elements.forEach(el => {
+                    if (!el) return;
+                    el.classList.toggle('text-sky-400', isTeam1Active);
+                    el.classList.toggle('text-white', !isTeam1Active);
+                });
+
+                team2Elements.forEach(el => {
+                    if (!el) return;
+                    el.classList.toggle('text-amber-400', !isTeam1Active);
+                    el.classList.toggle('text-white', isTeam1Active);
+                    el.classList.remove('text-sky-400'); // Ensure P2 name isn't sky blue
+                });
 
                 // Update current turn display
                 turnDisplay.innerHTML = '';
@@ -325,7 +465,7 @@
                 });
 
                 // Update checkout suggestions
-                if (state.game_mode !== 'around_the_world' && Array.isArray(state.checkout_suggestions) && state.checkout_suggestions.length > 0) {
+                if (!isCricket && !isAroundTheWorld && Array.isArray(state.checkout_suggestions) && state.checkout_suggestions.length > 0) {
                     checkoutSuggestions.innerHTML = '';
                     state.checkout_suggestions.forEach(suggestion => {
                         const suggestionEl = document.createElement('span');
@@ -343,11 +483,29 @@
                 if (state.turn_log && state.turn_log.length > 0) {
                     state.turn_log.forEach(log_item => {
                         const logEl = document.createElement('div');
-                        // Split the log to style the throws part differently
-                        const match = log_item.match(/(.*)(\(.*\))/);
+                        logEl.className = 'grid grid-cols-3 gap-4 items-center'; // Use grid for 3-column layout
+
+                        // Regex to capture player, score, and throws separately
+                        const match = log_item.match(/(.*?):\s*([\d]+|BUST)\s*(\(.*\))/);
+
                         if (match) {
-                            // Reconstruct with a styled span for the throws
-                            logEl.innerHTML = `${match[1]}<span class="font-mono text-sky-300">${match[2]}</span>`;
+                            const playerPart = document.createElement('span');
+                            playerPart.textContent = match[1]; // e.g., "Player 1"
+
+                            const scorePart = document.createElement('span');
+                            scorePart.className = 'font-bold text-center'; // Bold and center the score
+                            scorePart.textContent = match[2]; // e.g., "60" or "BUST"
+
+                            const throwsPart = document.createElement('span');
+                            throwsPart.className = 'font-mono text-sky-300 text-right'; // Align throws to the right
+                            // Highlight any misses in red
+                            const throwsHtml = match[2].replace(/MISS/g, '<span class="text-red-500 font-semibold">MISS</span>');
+                            // The regex for throws now captures the parentheses, so we use the 3rd group
+                            throwsPart.innerHTML = match[3].replace(/MISS/g, '<span class="text-red-500 font-semibold">MISS</span>');
+
+                            logEl.appendChild(playerPart);
+                            logEl.appendChild(scorePart);
+                            logEl.appendChild(throwsPart);
                         } else {
                             logEl.textContent = log_item; // Fallback for non-matching format
                         }
@@ -373,6 +531,12 @@
                 } else {
                     messageBar.classList.remove('bg-green-500/50', 'text-2xl', 'font-bold');
                 }
+
+                // Enable/disable Undo and Redo buttons
+                const canUndo = state.history && state.history.length > 1;
+
+                btnUndo.disabled = !canUndo;
+                btnUndo.classList.toggle('opacity-50', !canUndo);
             }
 
             // Reset multiplier button visual state

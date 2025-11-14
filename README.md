@@ -3,7 +3,7 @@
 A sleek, modern, and responsive web-based darts scorer application built with Flask and vanilla JavaScript. Perfect for tracking your games of X01 and Around the World, whether you're playing solo or in teams.
 
 <p align="center">
-  <img src="darts.png" alt="Darts Scorer Screenshot" width="60%">
+  <img src="images/darts.png" alt="Darts Scorer Screenshot" width="60%">
 </p>
 
 

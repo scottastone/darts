@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from flask import Flask, render_template_string, jsonify, request, session
 
 # Initialize the Flask app
@@ -13,6 +14,10 @@ if not SECRET_KEY:
     SECRET_KEY = os.urandom(24).hex()
 
 app.secret_key = SECRET_KEY
+
+# Configure basic logging
+if not app.debug:
+    app.logger.setLevel(logging.INFO)
 
 
 # --- App Logic ---
@@ -85,6 +90,21 @@ def _start_game(game_mode="501"):
     session["game_over"] = False
     session["winner"] = None
     session["turn_log"] = []  # A log of completed turns
+
+    # Cricket specific setup
+    if game_mode == "cricket":
+        session["cricket_marks"] = {
+            "team1": {"20": 0, "19": 0, "18": 0, "17": 0, "16": 0, "15": 0, "25": 0},
+            "team2": {"20": 0, "19": 0, "18": 0, "17": 0, "16": 0, "15": 0, "25": 0},
+        }
+        session["team1_score"] = 0
+        session["team2_score"] = 0
+        session["win_on_double"] = False
+        session["checkout_suggestions"] = []
+        player_name = session[f"player{session['current_player']}_name"]
+        session["message"] = f"{player_name} to throw."
+        _save_state_to_history()
+        return
 
     # Determine current player name and team for message
     player_name = session[f"player{session['current_player']}_name"]
@@ -181,7 +201,6 @@ def _next_player():
         False  # Reset bust flag for the new turn, after all message logic
     )
 
-
 # --- API Endpoints ---
 
 
@@ -210,12 +229,78 @@ def record_score():
     throw_repr = get_throw_string(base_score, multiplier)
     throw_data = {"score": score, "repr": throw_repr}
 
+    # Log the game action
+    app.logger.info(f"IP: {request.remote_addr} - Score recorded: {throw_repr}")
+
     # Save the current state *before* making changes, so 'undo' works
     _save_state_to_history()
 
     current_player_num = session["current_player"]
     player_name = session[f"player{current_player_num}_name"]
     current_team = 1 if current_player_num in [1, 3] else 2
+
+    # --- Cricket Logic ---
+    if session.get("game_mode") == "cricket":
+        cricket_numbers = [20, 19, 18, 17, 16, 15, 25]
+        team_key = f"team{current_team}"
+        opponent_team_key = "team2" if current_team == 1 else "team1"
+
+        session["turn_scores"].append(throw_data)
+
+        if base_score in cricket_numbers:
+            # Handle bullseye scoring (DB=2 hits, SB=1 hit)
+            hits = 2 if base_score == 25 and multiplier == 2 else multiplier
+
+            marks_key = str(base_score)
+            current_marks = session["cricket_marks"][team_key][marks_key]
+
+            points_scored_this_throw = 0
+            opponent_is_closed = (
+                session["cricket_marks"][opponent_team_key][marks_key] >= 3
+            )
+
+            for _ in range(hits):
+                if current_marks < 3:
+                    current_marks += 1
+                elif not opponent_is_closed:
+                    # Number is owned by current team and open for opponent, so score points
+                    session[f"{team_key}_score"] += base_score
+                    points_scored_this_throw += base_score  # Also track for the message
+
+            if points_scored_this_throw > 0:
+                session["message"] = f"{player_name} scored {points_scored_this_throw}!"
+            else:
+                session["message"] = f"{player_name} marked {throw_repr}."
+            session["cricket_marks"][team_key][marks_key] = current_marks
+
+            # Check for win condition
+            my_marks = session["cricket_marks"][team_key]
+            all_closed = all(v >= 3 for v in my_marks.values())
+
+            if all_closed and session[f"{team_key}_score"] >= session[
+                f"{opponent_team_key}_score"
+            ]:
+                session["game_over"] = True
+                session["winner"] = current_team
+                team_name = f"Team {current_team}"
+                session["message"] = f"GAME SHOT! {player_name} wins Cricket for {team_name}!"
+                # Log the final turn
+                turn_total = sum(item["score"] for item in session["turn_scores"])
+                turn_reprs = " ".join(item["repr"] for item in session["turn_scores"])
+                session.get("turn_log", []).insert(
+                    0, f"{player_name}: {turn_total} ({turn_reprs})"
+                )
+                return jsonify(dict(session))
+
+        else:
+            # Missed a cricket number
+            session["message"] = f"{player_name} threw {throw_repr} (Miss)."
+
+        # Check if turn is over (3 darts thrown)
+        if len(session["turn_scores"]) == 3:
+            _next_player()
+
+        return jsonify(dict(session))
 
     # --- Around the World Logic ---
     if session.get("game_mode") == "around_the_world":
@@ -350,6 +435,7 @@ def undo_score():
     if len(history) > 1:
         # Remove the current state, leaving the previous state at the end
         history.pop()
+
         last_state = history[-1]  # Peek at the new last state
         # Update the session with the values from the last state
         session.clear()
@@ -366,8 +452,10 @@ def undo_score():
 def reset_game():
     """Resets the game to a new mode (501, 401, etc.)."""
     game_mode = str(request.json.get("mode", "501"))
-    if game_mode not in ["101", "201", "301", "401", "501", "around_the_world"]:
+    valid_modes = ["101", "201", "301", "401", "501", "around_the_world", "cricket"]
+    if game_mode not in valid_modes:
         game_mode = "501"  # Default to 501 if an invalid mode is passed
+    app.logger.info(f"IP: {request.remote_addr} - New game started: {game_mode}")
     _start_game(game_mode)
     return jsonify(dict(session))
 
@@ -421,6 +509,8 @@ def update_settings():
     data = request.json
     if "teams_mode" in data:
         session["teams_mode"] = bool(data["teams_mode"])
+        # When toggling teams, always reset the current player to 1
+        session["current_player"] = 1
     # Reset the game with the new setting
     _start_game(session.get("game_mode", "501"))
     return jsonify(dict(session))
@@ -475,16 +565,21 @@ def get_stats():
 
 # --- Frontend (HTML/CSS/JS) ---
 
-# This is the main HTML template.
-# It uses Tailwind CSS for styling and JavaScript for interactivity.
-with open("templates/index.html") as f:
-    HTML_TEMPLATE = f.read()
+
+def load_template():
+    """Load the HTML template from file."""
+    try:
+        with open("templates/index.html") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "<h1>Error: index.html not found in templates directory.</h1>"
 
 
 @app.route("/")
 def index():
     """Serve the main HTML page."""
-    return render_template_string(HTML_TEMPLATE)
+    app.logger.info(f"IP: {request.remote_addr} - Connection established.")
+    return render_template_string(load_template())
 
 
 # --- Run the App ---

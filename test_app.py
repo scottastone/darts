@@ -275,3 +275,169 @@ def test_get_stats(client):
     assert stats["P2"]["total_score"] == 0
     assert stats["P2"]["darts_thrown"] == 1  # Bust on first dart
     assert stats["P2"]["average"] == 0.0
+
+
+# --- Cricket Game Mode Tests ---
+def test_cricket_initial_state(client):
+    """Test the initial state of a Cricket game."""
+    response = client.post("/api/reset", json={"mode": "cricket"})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["game_mode"] == "cricket"
+    assert data["team1_score"] == 0
+    assert data["team2_score"] == 0
+    assert "cricket_marks" in data
+    assert data["cricket_marks"]["team1"]["20"] == 0
+    assert data["cricket_marks"]["team2"]["15"] == 0
+
+
+def test_cricket_marking_numbers(client):
+    """Test marking numbers in Cricket and player switching."""
+    client.post("/api/reset", json={"mode": "cricket"})
+    # P1 hits S20
+    response = client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+    data = response.get_json()
+    assert data["cricket_marks"]["team1"]["20"] == 1
+    assert "marked S20" in data["message"]
+
+    # P1 hits T20, closing the number
+    response = client.post("/api/score", json={"base_score": 20, "multiplier": 3})
+    data = response.get_json()
+    assert data["cricket_marks"]["team1"]["20"] == 3  # 1 + 2 (from T20)
+    assert data["team1_score"] == 20  # One of the T20 hits scores points
+    assert "scored 20" in data["message"]
+
+    # P1 misses, turn ends
+    response = client.post("/api/score", json={"base_score": 1, "multiplier": 1})
+    data = response.get_json()
+    assert data["current_player"] == 2
+    assert "Player 2 to throw" in data["message"]
+
+
+def test_cricket_scoring_points(client):
+    """Test scoring points on an owned number in Cricket."""
+    client.post("/api/reset", json={"mode": "cricket"})
+    with client.session_transaction() as session:
+        # Pre-close 20s for Player 1 and partially close 18 for P2
+        session["cricket_marks"]["team1"]["20"] = 3  # P1 has 20s closed
+
+    # P1 hits T20, scoring 60 points, then misses twice. Turn ends.
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})  # 60 points
+    client.post("/api/score", json={"base_score": 5, "multiplier": 1})  # Miss
+    client.post("/api/score", json={"base_score": 7, "multiplier": 1})  # Miss
+
+    # P2's turn. P2 needs to close 18s and score.
+    # P2 hits D18 (2 marks)
+    response = client.post("/api/score", json={"base_score": 18, "multiplier": 2})
+    data = response.get_json()
+    assert data["cricket_marks"]["team2"]["18"] == 2
+
+    # P2 hits S18 (closes 18s)
+    response = client.post("/api/score", json={"base_score": 18, "multiplier": 1})
+    data = response.get_json()
+    assert data["cricket_marks"]["team2"]["18"] == 3
+
+    # P2 hits S18 again, now scoring 18 points.
+    response = client.post("/api/score", json={"base_score": 18, "multiplier": 1})
+    data = response.get_json()
+    assert data["team2_score"] == 18
+    # The turn is now over, so the message should be for the next player (P1)
+    assert "Player 1 to throw" in data["message"]
+
+
+def test_cricket_no_scoring_when_opponent_closed(client):
+    """Test that no points are scored on a number closed by both players."""
+    client.post("/api/reset", json={"mode": "cricket"})
+    with client.session_transaction() as session:
+        # Pre-close 20s for both players
+        session["cricket_marks"]["team1"]["20"] = 3
+        session["cricket_marks"]["team2"]["20"] = 3
+
+    # P1 hits S20, should score 0 points
+    response = client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+    data = response.get_json()
+    assert data["team1_score"] == 0
+    assert "marked S20" in data["message"]  # No "scored" message
+
+
+def test_cricket_win_condition(client):
+    """Test the win condition in Cricket."""
+    client.post("/api/reset", json={"mode": "cricket"})
+    with client.session_transaction() as session:
+        # P1 has all numbers closed except 20, and is ahead on points
+        for num in ["19", "18", "17", "16", "15", "25"]:
+            session["cricket_marks"]["team1"][num] = 3
+        session["team1_score"] = 100
+        session["team2_score"] = 50
+
+    # P1 hits T20 to close the last number and win
+    response = client.post("/api/score", json={"base_score": 20, "multiplier": 3})
+    data = response.get_json()
+
+    assert data["game_over"] is True
+    assert data["winner"] == 1
+    assert "wins Cricket" in data["message"]
+
+
+def test_cricket_no_win_on_lower_score(client):
+    """Test that the game does not end if the player has a lower score."""
+    client.post("/api/reset", json={"mode": "cricket"})
+    with client.session_transaction() as session:
+        # P1 closes all numbers but is behind on points
+        for num in ["20", "19", "18", "17", "16", "15", "25"]:
+            session["cricket_marks"]["team1"][num] = 3
+        session["team2_score"] = 100
+
+    # P1's turn, but game should not be over
+    response = client.get("/api/state")
+    data = response.get_json()
+    assert data["game_over"] is False
+
+
+def test_long_501_game_simulation(client):
+    """Simulates a longer 501 game to test state over multiple turns."""
+    client.post("/api/reset", json={"mode": "501"})
+
+    # Turn 1 (P1): Scores 100, leaves 401
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})
+    client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+    client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+
+    # Turn 2 (P2): Scores 45, leaves 456
+    client.post("/api/score", json={"base_score": 15, "multiplier": 1})
+    client.post("/api/score", json={"base_score": 15, "multiplier": 1})
+    client.post("/api/score", json={"base_score": 15, "multiplier": 1})
+
+    # Turn 3 (P1): Scores 140, leaves 261
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})
+    client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+
+    # Turn 4 (P2): Scores 95, leaves 361
+    client.post("/api/score", json={"base_score": 19, "multiplier": 3})
+    client.post("/api/score", json={"base_score": 19, "multiplier": 1})
+    client.post("/api/score", json={"base_score": 19, "multiplier": 1})
+
+    # Turn 5 (P1): Scores 131, leaves 130
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})
+    client.post("/api/score", json={"base_score": 17, "multiplier": 3})
+    client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+
+    # Turn 6 (P2): Scores 100, leaves 261
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})
+    client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+    response = client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+    data = response.get_json()
+    assert data["team2_score"] == 261  # Score reverts to start of turn
+
+    # Turn 7 (P1): Wins with a 130 checkout (T20, T20, D5)
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})  # 70 left
+    client.post("/api/score", json={"base_score": 20, "multiplier": 3})  # 10 left
+    response = client.post("/api/score", json={"base_score": 5, "multiplier": 2})  # Win
+    data = response.get_json()
+
+    assert data["game_over"] is True
+    assert data["winner"] == 1
+    assert data["team1_score"] == 0
+    assert "GAME SHOT" in data["message"]
+    assert len(data["turn_log"]) == 7  # 6 full turns + 1 winning turn
