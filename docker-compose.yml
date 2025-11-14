@@ -1,0 +1,7 @@
+services:
+  darts-scorer:
+    build: .
+    container_name: darts_scorer_app
+    ports:
+      - "5054:5054"
+    restart: unless-stopped
