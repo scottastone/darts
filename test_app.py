@@ -441,3 +441,34 @@ def test_long_501_game_simulation(client):
     assert data["team1_score"] == 0
     assert "GAME SHOT" in data["message"]
     assert len(data["turn_log"]) == 7  # 6 full turns + 1 winning turn
+
+
+def test_cricket_double_bull_marks(client):
+    """Test that a double bull correctly counts as two marks in Cricket."""
+    client.post("/api/reset", json={"mode": "cricket"})
+    # P1 hits a double bull (base_score 25, multiplier 2)
+    response = client.post("/api/score", json={"base_score": 25, "multiplier": 2})
+    data = response.get_json()
+    assert data["cricket_marks"]["team1"]["25"] == 2
+    assert "marked DB" in data["message"]
+
+
+def test_cricket_teams_mode(client):
+    """Test player rotation and scoring in Cricket with teams mode."""
+    client.post("/api/settings", json={"teams_mode": True})
+    client.post("/api/reset", json={"mode": "cricket"})
+
+    # P1 (Team 1) marks a 20
+    client.post("/api/score", json={"base_score": 20, "multiplier": 1})
+    client.post("/api/score", json={"base_score": 1, "multiplier": 1})
+    client.post("/api/score", json={"base_score": 1, "multiplier": 1})
+
+    # P2 (Team 2) marks a 19
+    client.post("/api/score", json={"base_score": 19, "multiplier": 1})
+    client.post("/api/score", json={"base_score": 1, "multiplier": 1})
+    response = client.post("/api/score", json={"base_score": 1, "multiplier": 1})
+    data = response.get_json()
+
+    assert data["current_player"] == 3  # Should be P3's turn (Team 1)
+    assert data["cricket_marks"]["team1"]["20"] == 1
+    assert data["cricket_marks"]["team2"]["19"] == 1

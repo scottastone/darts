@@ -433,13 +433,14 @@ def undo_score():
 
     history = session.get("history", [])
     if len(history) > 1:
-        # Remove the current state, leaving the previous state at the end
-        history.pop()
-
-        last_state = history[-1]  # Peek at the new last state
+        # Create a new history list that is one step shorter
+        new_history = history[:-1]
+        last_state = new_history[-1]  # The new last state
         # Update the session with the values from the last state
         session.clear()
         session.update(last_state)
+        # The history list also needs to be part of the reverted state
+        session["history"] = new_history
         session["message"] = "Undo successful. Last throw reverted."
     elif len(history) == 1:
         # This is the initial state, can't undo past it
