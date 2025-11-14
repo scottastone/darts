@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darts Scorer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a better look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom right, #1f2937, #111827);
+            touch-action: manipulation; /* Disable double-tap to zoom on mobile */
+        }
+
+        /* --- Glassmorphism UI Overhaul --- */
+        .glass-panel {
+            background-color: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(1.5rem); /* xl */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
+        }
+
+        .score-btn, .ctrl-btn, .multi-btn { /* New Button Base Style */
+            border-width: 1px;
+            border-color: rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        .score-btn:active, .ctrl-btn:active, .multi-btn:active {
+            transform: scale(0.95);
+        }
+
+        .ctrl-btn.active {
+            background-image: linear-gradient(to bottom, var(--tw-gradient-stops));
+            --tw-gradient-from: #22c55e; /* from-green-500 */
+            --tw-gradient-to: #16a34a;   /* to-green-600 */
+        }
+
+        .multi-btn.active {
+            background-image: linear-gradient(to bottom, var(--tw-gradient-stops));
+            --tw-gradient-from: #38bdf8; /* from-sky-400 */
+            --tw-gradient-to: #0ea5e9; /* to-sky-500 */
+            color: white; /* Keep text white for readability */
+            border-color: #7dd3fc; /* border-sky-300 */
+            box-shadow: 0 0 0 2px white; /* ring-2 ring-white */
+        }
+        .player-name-input.active {
+            color: #a3e635; /* text-lime-400 */
+            font-weight: 700; /* font-bold */
+        }
+        .player-name-input:not(.active) {
+            color: #6b7280; /* text-gray-500 */
+        }
+        .player-board {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        .player-board.active {
+            border-color: rgba(251, 191, 36, 0.8); /* border-amber-400/80 */
+        }
+        .player-board.inactive {
+            border-color: rgba(255, 255, 255, 0.1); /* border-white/10 */
+        }
+
+        /* --- Dropdown Style --- */
+        select option {
+            background: #1f2937; /* bg-gray-800 */
+        }
+
+        /* --- Stats Modal --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(0.125rem); /* backdrop-blur-sm */
+            transition-property: opacity;
+            transition-duration: 300ms;
+        }
+        .modal-content {
+            transform: scale(0.95);
+            transition-property: transform;
+            transition-duration: 300ms;
+        }
+        .modal-overlay:not(.hidden) .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4">
+
+    <div class="container mx-auto max-w-lg">
+        <!-- Header & Controls -->
+        <header class="flex flex-wrap justify-between items-center gap-y-4 mb-6">
+            <h1 class="text-3xl font-bold">Darts in the Dungeon 🎯</h1>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <select id="gameModeSelect" class="h-12 px-4 rounded-lg font-semibold bg-black text-white border border-white/10 shadow-lg outline-none focus:ring-2 focus:ring-sky-400 appearance-none">
+                        <option value="around_the_world">Around the World</option>
+                        <option value="501">501</option>
+                        <option value="401">401</option>
+                        <option value="301">301</option>
+                        <option value="201">201</option>
+                        <option value="101">101</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                </div>
+                <button id="teamsModeBtn" class="w-32 h-12 ctrl-btn">Teams: OFF</button>
+                <button id="statsBtn" class="w-28 h-12 ctrl-btn">Stats</button>
+                <button id="newGameBtn" class="w-32 h-12 flex items-center justify-center rounded-lg font-bold text-lg text-white
+                                             bg-green-500/50 border border-green-400/60 shadow-md
+                                             transition-all duration-150 hover:bg-green-500/60 hover:shadow-lg hover:shadow-green-400/30
+                                             active:scale-95 active:bg-green-500/70">
+                    New Game
+                </button>
+            </div>
+        </header>
+
+        <!-- Scoreboard -->
+        <div class="flex space-x-4 mb-4">
+            <div id="team1_board" class="player-board inactive">
+                <h2 class="text-lg font-bold mb-2">Team 1</h2>
+                <input id="p1_name_input" type="text" value="Player 1" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
+                <input id="p3_name_input" type="text" value="Player 3" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
+                <div id="team1_score" class="text-7xl font-bold mt-2">501</div>
+            </div>
+            <div id="team2_board" class="player-board inactive">
+                <h2 class="text-lg font-bold mb-2">Team 2</h2>
+                <input id="p2_name_input" type="text" value="Player 2" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
+                <input id="p4_name_input" type="text" value="Player 4" class="player-name-input w-full bg-transparent text-center text-base font-semibold p-1 rounded-md outline-none transition-colors focus:bg-white/10 focus:ring-1 focus:ring-amber-400">
+                <div id="team2_score" class="text-7xl font-bold mt-2">501</div>
+            </div>
+        </div>
+
+        <!-- Message Bar -->
+        <div id="message_bar" class="text-center text-lg font-medium p-3 mb-4 h-12 flex items-center justify-center glass-panel">
+            Loading...
+        </div>
+
+        <!-- Current Turn Display -->
+        <div class="mb-4">
+            <h3 class="text-sm font-semibold text-gray-400">Current Turn:</h3>
+            <div id="current_turn_display" class="flex items-center space-x-2 h-8 text-xl font-mono">
+                <!-- Scores like [100] [60] [20] will appear here -->
+            </div>
+        </div>
+
+        <!-- Checkout Suggestions -->
+        <div id="checkout_container" class="mb-4 hidden">
+            <h3 class="text-sm font-semibold text-gray-400">Checkout:</h3>
+            <div id="checkout_suggestions" class="flex items-center space-x-4 h-8 text-lg font-mono text-amber-300 flex-wrap">
+                <!-- Suggestions like T20, T20, Bull will appear here -->
+            </div>
+        </div>
+
+        <!-- Multiplier Buttons -->
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <button id="btn_double" class="multi-btn" data-multiplier="2">DOUBLE (D)</button>
+            <button id="btn_triple" class="multi-btn" data-multiplier="3">TRIPLE (T)</button>
+        </div>
+
+        <!-- Score Input Buttons -->
+        <div class="grid grid-cols-7 gap-2">
+            <button class="score-btn" data-score="20">20</button>
+            <button class="score-btn" data-score="19">19</button>
+            <button class="score-btn" data-score="18">18</button>
+            <button class="score-btn" data-score="17">17</button>
+            <button class="score-btn" data-score="16">16</button>
+            <button class="score-btn" data-score="15">15</button>
+            <button class="score-btn" data-score="14">14</button>
+            
+            <button class="score-btn" data-score="13">13</button>
+            <button class="score-btn" data-score="12">12</button>
+            <button class="score-btn" data-score="11">11</button>
+            <button class="score-btn" data-score="10">10</button>
+            <button class="score-btn" data-score="9">9</button>
+            <button class="score-btn" data-score="8">8</button>
+            <button class="score-btn" data-score="7">7</button>
+            
+            <button class="score-btn" data-score="6">6</button>
+            <button class="score-btn" data-score="5">5</button>
+            <button class="score-btn" data-score="4">4</button>
+            <button class="score-btn" data-score="3">3</button>
+            <button class="score-btn" data-score="2">2</button>
+            <button class="score-btn" data-score="1">1</button>
+            <button id="btn_undo" class="ctrl-btn">UNDO</button>
+        </div>
+
+        <!-- Bull and Miss Buttons -->
+        <div class="grid grid-cols-7 gap-2 mt-2">
+            <button class="score-btn col-span-3" data-score="25">OUTER BULL (25)</button>
+            <button class="score-btn col-span-4" data-score="0">MISS (0)</button>
+            <button id="btn_bull" class="score-btn col-span-7">DBL BULL (50)</button>
+        </div>
+
+        <!-- Turn History -->
+        <div class="mt-6">
+            <h3 class="text-lg font-semibold text-gray-300 border-b border-white/10 pb-2 mb-3">Turn History</h3>
+            <div id="turn_history_log" class="text-gray-300 text-sm space-y-2 max-h-48 overflow-y-auto p-2">
+                <!-- History items will be injected here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="statsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Game Statistics</h2>
+                <button id="closeStatsBtn" class="text-2xl font-bold text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div id="statsContent" class="space-y-4">
+                <!-- Stats will be injected here -->
+                <div class="text-center p-4">Loading stats...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let currentMultiplier = 1;
+            let currentState = {}; // Store the latest state globally for easy access
+            let activeMultiplierButton = null;
+            let isGameRunning = true;
+
+            const team1Board = document.getElementById('team1_board');
+            const team1Score = document.getElementById('team1_score');
+            const team2Board = document.getElementById('team2_board');
+            const team2Score = document.getElementById('team2_score');
+
+            const p1NameInput = document.getElementById('p1_name_input');
+            const p2NameInput = document.getElementById('p2_name_input');
+            const p3NameInput = document.getElementById('p3_name_input');
+            const p4NameInput = document.getElementById('p4_name_input');
+
+            const messageBar = document.getElementById('message_bar');
+            const turnDisplay = document.getElementById('current_turn_display');
+            const checkoutContainer = document.getElementById('checkout_container');
+            const checkoutSuggestions = document.getElementById('checkout_suggestions');
+            const turnHistoryLog = document.getElementById('turn_history_log');
+            
+            const btnDouble = document.getElementById('btn_double');
+            const btnTriple = document.getElementById('btn_triple');
+            const btnUndo = document.getElementById('btn_undo');
+            const btnBull = document.getElementById('btn_bull');
+            const btnOuterBull = document.querySelector('.score-btn[data-score="25"]');
+            const btnMiss = document.querySelector('.score-btn[data-score="0"]');
+            const btnNewGame = document.getElementById('newGameBtn');
+            const gameModeSelect = document.getElementById('gameModeSelect');
+            const statsBtn = document.getElementById('statsBtn');
+            const statsModal = document.getElementById('statsModal');
+            const closeStatsBtn = document.getElementById('closeStatsBtn');
+            const teamsModeBtn = document.getElementById('teamsModeBtn');
+
+            // Function to update the entire UI from a state object
+            function updateUI(state) {
+                currentState = state; // Keep a global copy of the state
+                team1Score.textContent = state.team1_score;
+                team2Score.textContent = state.team2_score;
+                p1NameInput.value = state.player1_name;
+                p2NameInput.value = state.player2_name;
+                p3NameInput.value = state.player3_name;
+                p4NameInput.value = state.player4_name;
+                messageBar.textContent = state.message; 
+
+                teamsModeBtn.textContent = state.teams_mode ? 'Teams: ON' : 'Teams: OFF';
+                teamsModeBtn.classList.toggle('active', state.teams_mode);
+
+                // Show/hide player name inputs based on teams mode
+                p3NameInput.classList.toggle('hidden', !state.teams_mode);
+                p4NameInput.classList.toggle('hidden', !state.teams_mode);
+
+                // Show/hide UI elements based on game mode
+                if (state.game_mode === 'around_the_world') {
+                    checkoutContainer.classList.add('hidden');
+                    // Update score display to show target number
+                    const t1Target = state.team1_target > 20 ? 'Bull' : state.team1_target;
+                    const t2Target = state.team2_target > 20 ? 'Bull' : state.team2_target;
+                    team1Score.textContent = t1Target;
+                    team2Score.textContent = t2Target;
+                    team1Score.classList.remove('text-7xl'); team1Score.classList.add('text-5xl');
+                    team2Score.classList.remove('text-7xl'); team2Score.classList.add('text-5xl');
+                } else { // 501, 301, etc.
+                    team1Score.classList.add('text-7xl'); team1Score.classList.remove('text-5xl');
+                    team2Score.classList.add('text-7xl'); team2Score.classList.remove('text-5xl');
+                }
+
+                // Clear all active states first
+                [team1Board, team2Board, p1NameInput, p2NameInput, p3NameInput, p4NameInput].forEach(el => {
+                    el.classList.remove('active', 'inactive');
+                });
+
+                // Update active player highlight
+                const currentPlayerNum = state.current_player;
+                const activePlayerInput = document.getElementById(`p${currentPlayerNum}_name_input`);
+                if (activePlayerInput) {
+                    activePlayerInput.classList.add('active');
+                }
+
+                // Highlight active team board
+                if ([1, 3].includes(currentPlayerNum)) { // Team 1
+                    team1Board.classList.add('active');
+                    team2Board.classList.add('inactive');
+                } else { // Team 2
+                    team2Board.classList.add('active');
+                    team1Board.classList.add('inactive');
+                }
+
+                // Update current turn display
+                turnDisplay.innerHTML = '';
+                state.turn_scores.forEach(throw_data => {
+                    const scoreEl = document.createElement('span');
+                    scoreEl.className = 'font-semibold';
+                    scoreEl.textContent = `[${throw_data.repr}]`;
+                    turnDisplay.appendChild(scoreEl);
+                });
+
+                // Update checkout suggestions
+                if (state.game_mode !== 'around_the_world' && Array.isArray(state.checkout_suggestions) && state.checkout_suggestions.length > 0) {
+                    checkoutSuggestions.innerHTML = '';
+                    state.checkout_suggestions.forEach(suggestion => {
+                        const suggestionEl = document.createElement('span');
+                        suggestionEl.className = 'font-semibold bg-black/20 px-2 py-1 rounded';
+                        suggestionEl.textContent = suggestion;
+                        checkoutSuggestions.appendChild(suggestionEl);
+                    });
+                    checkoutContainer.classList.remove('hidden');
+                } else {
+                    checkoutContainer.classList.add('hidden');
+                }
+
+                // Update turn history
+                turnHistoryLog.innerHTML = '';
+                if (state.turn_log && state.turn_log.length > 0) {
+                    state.turn_log.forEach(log_item => {
+                        const logEl = document.createElement('div');
+                        // Split the log to style the throws part differently
+                        const match = log_item.match(/(.*)(\(.*\))/);
+                        if (match) {
+                            // Reconstruct with a styled span for the throws
+                            logEl.innerHTML = `${match[1]}<span class="font-mono text-sky-300">${match[2]}</span>`;
+                        } else {
+                            logEl.textContent = log_item; // Fallback for non-matching format
+                        }
+                        turnHistoryLog.appendChild(logEl);
+                    });
+                }
+
+                // Handle game over
+                isGameRunning = !state.game_over;
+                if (state.game_over) {
+                    messageBar.classList.add('bg-green-500/50', 'text-2xl', 'font-bold');
+                    team1Board.classList.remove('active', 'inactive');
+                    team2Board.classList.remove('active', 'inactive');
+                    team1Board.classList.remove('border-green-400/80'); // Clear old winner
+                    team2Board.classList.remove('border-green-400/80'); // Clear old winner
+                    [p1NameInput, p2NameInput, p3NameInput, p4NameInput].forEach(el => el.classList.remove('active'));
+
+                    if (state.winner === 1) {
+                        team1Board.classList.add('border-green-400/80');
+                    } else if (state.winner === 2) { // Winner is a team number
+                        team2Board.classList.add('border-green-400/80');
+                    }
+                } else {
+                    messageBar.classList.remove('bg-green-500/50', 'text-2xl', 'font-bold');
+                }
+            }
+
+            // Reset multiplier button visual state
+            function resetMultiplier() {
+                currentMultiplier = 1;
+                if (activeMultiplierButton) {
+                    activeMultiplierButton.classList.remove('active');
+                    activeMultiplierButton = null;
+                }
+                // Re-enable bull/miss buttons
+                [btnOuterBull, btnBull, btnMiss].forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                });
+            }
+
+            // Handle clicking a score button (0-20, 25)
+            async function handleScoreClick(baseScore, multiplierOverride = null) {
+                if (!isGameRunning) return;
+
+                const payload = {
+                    base_score: baseScore,
+                    multiplier: multiplierOverride || currentMultiplier
+                };
+
+                try {
+                    const response = await fetch('/api/score', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const state = await response.json();
+                    updateUI(state);
+                } catch (err) {
+                    messageBar.textContent = "Error connecting to server.";
+                }
+
+                resetMultiplier();
+            }
+
+            // Handle clicking Double or Triple
+            function handleMultiplierClick(multiplier, button) {
+                if (!isGameRunning) return;
+
+                if (activeMultiplierButton === button) {
+                    // Clicked the same button, so deselect it
+                    resetMultiplier();
+                } else {
+                    // Deselect old button, select new one
+                    resetMultiplier();
+                    currentMultiplier = multiplier;
+                    activeMultiplierButton = button;
+                    button.classList.add('active');
+                    // Disable bull/miss buttons as they can't be multiplied
+                    [btnOuterBull, btnBull, btnMiss].forEach(btn => {
+                        btn.disabled = true;
+                        btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    });
+                }
+            }
+
+            // Handle Undo
+            btnUndo.addEventListener('click', async () => {
+                if (sessionStorage.getItem('reloading')) return; // Prevent double clicks
+                sessionStorage.setItem('reloading', 'true');
+
+                try {
+                    const response = await fetch('/api/undo', { method: 'POST' });
+                    const state = await response.json();
+                    updateUI(state);
+                } catch (err) {
+                    messageBar.textContent = "Error connecting to server.";
+                }
+                resetMultiplier();
+                sessionStorage.removeItem('reloading');
+            });
+
+            // Handle New Game
+            btnNewGame.addEventListener('click', async () => {
+                if (sessionStorage.getItem('reloading')) return;
+                sessionStorage.setItem('reloading', 'true');
+                
+                const mode = gameModeSelect.value;
+                try {
+                    const response = await fetch('/api/reset', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: mode })
+                    });
+                    const state = await response.json();
+                    updateUI(state);
+                } catch (err) {
+                    messageBar.textContent = "Error connecting to server.";
+                }
+                resetMultiplier();
+                sessionStorage.removeItem('reloading');
+            });
+
+            // --- Stats Modal Logic ---
+            statsBtn.addEventListener('click', async () => {
+                statsModal.classList.remove('hidden');
+                document.getElementById('statsContent').innerHTML = '<div class="text-center p-4">Loading stats...</div>';
+                
+                try {
+                    const response = await fetch('/api/stats');
+                    if (!response.ok) throw new Error('Failed to load stats');
+                    const stats = await response.json();
+                    
+                    const statsContent = document.getElementById('statsContent');
+                    statsContent.innerHTML = ''; // Clear loading message
+
+                    Object.entries(stats).forEach(([playerName, data]) => {
+                        const playerStatEl = document.createElement('div');
+                        playerStatEl.className = 'p-4 bg-black/20 rounded-lg';
+                        playerStatEl.innerHTML = `
+                            <h3 class="text-xl font-semibold text-amber-300">${playerName}</h3>
+                            <div class="grid grid-cols-2 gap-2 mt-2 text-lg">
+                                <div>
+                                    <div class="text-sm text-gray-400">3-Dart Avg</div>
+                                    <div class="font-bold text-2xl">${data.average.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-400">Darts Thrown</div>
+                                    <div class="font-bold text-2xl">${data.darts_thrown}</div>
+                                </div>
+                            </div>
+                        `;
+                        statsContent.appendChild(playerStatEl);
+                    });
+
+                } catch (err) {
+                    document.getElementById('statsContent').textContent = 'Could not load statistics.';
+                }
+            });
+
+            closeStatsBtn.addEventListener('click', () => {
+                statsModal.classList.add('hidden');
+            });
+
+
+            // Handle Name Changes
+            async function handleNameChange() {
+                // Only send names relevant to the current mode
+                const payload = {
+                    player1_name: p1NameInput.value,
+                    player2_name: p2NameInput.value,
+                    player3_name: p3NameInput.value,
+                    player4_name: p4NameInput.value,
+                };
+                // Optimistic UI update: update the UI immediately after the fetch promise resolves
+                // This makes the name change feel instant.
+                fetch('/api/names', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => response.json())
+                .then(state => updateUI(state)) // Update UI with fresh state from server
+                .catch(err => { messageBar.textContent = "Error updating names."; });
+            }
+            [p1NameInput, p2NameInput, p3NameInput, p4NameInput].forEach(input => {
+                input.addEventListener('blur', handleNameChange);
+            });
+
+            // Attach listeners to all score buttons
+            document.querySelectorAll('.score-btn:not(#btn_bull)').forEach(btn => {
+                btn.addEventListener('click', () => handleScoreClick(parseInt(btn.dataset.score, 10)));
+            });
+
+            // Attach listeners to multiplier buttons
+            btnDouble.addEventListener('click', () => handleMultiplierClick(2, btnDouble));
+            btnTriple.addEventListener('click', () => handleMultiplierClick(3, btnTriple));
+
+            // Special handler for Double Bull
+            btnBull.addEventListener('click', () => handleScoreClick(25, 2)); // baseScore 25, multiplier 2
+
+            // Handle Teams Mode Toggle
+            teamsModeBtn.addEventListener('click', async () => {
+                const payload = {
+                    teams_mode: !currentState.teams_mode // Toggle the current state
+                };
+                try {
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const state = await response.json();
+                    updateUI(state);
+                } catch (err) {
+                    messageBar.textContent = "Error updating settings.";
+                }
+            });
+
+            // Initial state load
+            async function initializeApp() {
+                try {
+                    const response = await fetch('/api/state');
+                    const state = await response.json();
+                    gameModeSelect.value = state.game_mode;
+                    updateUI(state);
+                } catch (err) {
+                    messageBar.textContent = "Error connecting to server.";
+                }
+            }
+            
+            initializeApp();
+        });
+    </script>
+</body>
+</html>
